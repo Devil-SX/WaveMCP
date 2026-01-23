@@ -23,7 +23,7 @@ MCP server for viewing and parsing VCD (Value Change Dump) waveform files.
 
 ```bash
 # Clone or navigate to the project directory
-cd /home/sdu/wave_mcp
+cd /path/to/wave_mcp
 
 # Install dependencies (creates isolated virtual environment)
 uv sync
@@ -43,7 +43,7 @@ Add to your Claude Desktop config (`~/.config/claude/claude_desktop_config.json`
   "mcpServers": {
     "wave-mcp": {
       "command": "uv",
-      "args": ["--directory", "/home/sdu/wave_mcp", "run", "wave-mcp"]
+      "args": ["--directory", "/path/to/wave_mcp", "run", "wave-mcp"]
     }
   }
 }
@@ -56,7 +56,7 @@ Each MCP server can have its own isolated Python environment. This prevents depe
 ### Debugging with MCP Inspector
 
 ```bash
-npx -y @modelcontextprotocol/inspector uv --directory /home/sdu/wave_mcp run wave-mcp
+npx -y @modelcontextprotocol/inspector uv --directory /path/to/wave_mcp run wave-mcp
 ```
 
 The Inspector will:
