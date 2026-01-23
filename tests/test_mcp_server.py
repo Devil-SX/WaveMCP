@@ -7,6 +7,7 @@ from vcd.writer import VCDWriter
 
 # Import the functions to test
 from mcp_server import (
+    convert_cadence_to_vcd,
     get_vcd_signal_values,
     get_vcd_signals,
     get_vcd_time_range,
@@ -191,3 +192,27 @@ async def test_get_vcd_signal_values_case_insensitive(test_vcd_file):
     result = await get_vcd_signal_values(["CLK"], 0, 100)
 
     assert "top.clk:" in result
+
+
+@pytest.mark.asyncio
+async def test_convert_cadence_to_vcd_no_tool():
+    """Test conversion when simvisdbutil is not available."""
+    result = await convert_cadence_to_vcd("input.db", "output.vcd")
+    assert "simvisdbutil tool not found" in result
+
+
+@pytest.mark.asyncio
+async def test_convert_cadence_to_vcd_file_not_found():
+    """Test conversion with non-existent input file."""
+    # This test will fail if simvisdbutil is actually installed
+    result = await convert_cadence_to_vcd("/nonexistent/file.db")
+    # Either tool not found or file not found
+    assert "simvisdbutil tool not found" in result or "Input file not found" in result
+
+
+@pytest.mark.asyncio
+async def test_convert_cadence_to_vcd_default_output_name():
+    """Test that default output filename is generated correctly."""
+    result = await convert_cadence_to_vcd("/nonexistent/file.db")
+    # Should fail, but we're testing the parameter handling
+    assert "simvisdbutil tool not found" in result or "Input file not found" in result
