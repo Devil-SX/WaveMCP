@@ -9,6 +9,7 @@ MCP server for viewing and parsing VCD (Value Change Dump) waveform files.
 - Query time ranges
 - Get signal values within time ranges
 - Pattern-based signal matching (case-insensitive)
+- **Convert Cadence waveform files (SST2/PWLF) to VCD format**
 
 ## Installation
 
@@ -16,6 +17,7 @@ MCP server for viewing and parsing VCD (Value Change Dump) waveform files.
 
 - Python 3.12+
 - [uv](https://github.com/astral-sh/uv) (recommended package manager)
+- Cadence `simvisdbutil` tool (for Cadence file conversion, optional)
 
 ### Setup
 
@@ -60,7 +62,12 @@ npx -y @modelcontextprotocol/inspector uv --directory /home/sdu/wave_mcp run wav
 The Inspector will:
 - Start a web UI (usually at http://localhost:5173)
 - Connect to your MCP server
-- Show available tools: `load_vcd_file`, `get_vcd_signals`, `get_vcd_time_range`, `get_vcd_signal_values`
+- Show available tools:
+  - `load_vcd_file` - Load a VCD file for analysis
+  - `get_vcd_signals` - List all signals
+  - `get_vcd_time_range` - Get time range
+  - `get_vcd_signal_values` - Get signal values in time range
+  - `convert_cadence_to_vcd` - Convert Cadence waveform to VCD format
 
 ## Testing
 
@@ -84,6 +91,33 @@ wave_mcp/
 └── README.md
 ```
 
-## VCD Format Only
+## Supported Formats
 
-This server currently supports VCD (Value Change Dump) format files only. Support for other waveform formats (FST, WLF, etc.) may be added in the future.
+- **VCD** (Value Change Dump) - Native format, full support
+- **Cadence SST2/PWLF** - Can be converted to VCD using `convert_cadence_to_vcd` tool (requires `simvisdbutil`)
+
+### Cadence to VCD Conversion
+
+The `convert_cadence_to_vcd` tool converts Cadence waveform files to VCD format:
+
+```python
+# Convert with default output path (same directory, .vcd extension)
+convert_cadence_to_vcd(input_file="/path/to/wave.db")
+
+# Convert with custom output path
+convert_cadence_to_vcd(
+    input_file="/path/to/wave.db",
+    output_file="/path/to/output.vcd"
+)
+```
+
+**Requirements:**
+- `simvisdbutil` must be installed and in PATH
+- The tool checks for availability before attempting conversion
+
+**Example:**
+```
+Successfully converted Cadence waveform to VCD format.
+Input file:  /absolute/path/to/wave.db
+Output file: /absolute/path/to/wave.vcd
+```
