@@ -16,6 +16,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - `src/utils/` - Utility functions (float_convert, format)
 - Tests for float conversion utilities (`tests/test_float_convert.py`)
 - Tests for value formatting utilities (`tests/test_format.py`)
+- Comprehensive corner case tests for float conversion:
+  - IEEE 754 special values (positive/negative zero, infinity, NaN, denormalized numbers)
+  - Input parsing edge cases (whitespace, case variations, short inputs)
+  - Boundary values (powers of two, precision limits, overflow/underflow)
+  - Known IEEE 754 bit patterns for all supported formats
 
 ### Changed
 - Refactored `mcp_server.py` to use modular structure with tools registered from `src/tools/`
