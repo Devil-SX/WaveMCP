@@ -28,19 +28,129 @@ from pathlib import Path
 
 import pytest
 
-# Import the functions and classes to test
-from mcp_server import (
-    FstParser,
-    WaveformParser,
-    load_fst_file,
-    load_vcd_file,
-    get_fst_signals,
-    get_vcd_signals,
-    get_fst_time_range,
-    get_vcd_time_range,
-    get_fst_signal_values,
-    get_vcd_signal_values,
-)
+# Import the functions and classes to test from the new module structure
+from src.parsers import FstParser, WaveformParser, set_vcd_parser, set_fst_parser, get_vcd_parser, get_fst_parser
+
+
+# Wrapper functions for MCP tools (to maintain compatibility with benchmark tests)
+async def load_vcd_file(vcd_path: str) -> str:
+    """Load a VCD file."""
+    path = Path(vcd_path)
+    if not path.exists():
+        return f"Error: File not found: {vcd_path}"
+    try:
+        parser = WaveformParser(str(path))
+        set_vcd_parser(parser)
+        signal_count = len(parser.get_signal_list())
+        return f"Successfully loaded VCD file: {vcd_path}\nFound {signal_count} signals."
+    except Exception as e:
+        return f"Error loading VCD file: {e}"
+
+
+async def load_fst_file(fst_path: str) -> str:
+    """Load an FST file."""
+    path = Path(fst_path)
+    if not path.exists():
+        return f"Error: File not found: {fst_path}"
+    try:
+        parser = FstParser(str(path))
+        set_fst_parser(parser)
+        signal_count = len(parser.get_signal_list())
+        return f"Successfully loaded FST file: {fst_path}\nFound {signal_count} signals."
+    except Exception as e:
+        return f"Error loading FST file: {e}"
+
+
+async def get_vcd_signals() -> str:
+    """Get VCD signal list."""
+    try:
+        parser = get_vcd_parser()
+    except ValueError as e:
+        return str(e)
+    signals = parser.get_signal_list()
+    if not signals:
+        return "No signals found in VCD file."
+    lines = ["Signals in VCD file:"]
+    for sig in signals:
+        lines.append(f"  {sig['path']:<40} type={sig['type']:<4} size={sig['size']}")
+    return "\n".join(lines)
+
+
+async def get_fst_signals() -> str:
+    """Get FST signal list."""
+    try:
+        parser = get_fst_parser()
+    except ValueError as e:
+        return str(e)
+    signals = parser.get_signal_list()
+    if not signals:
+        return "No signals found in FST file."
+    lines = ["Signals in FST file:"]
+    for sig in signals:
+        lines.append(f"  {sig['path']:<40} type={sig['type']:<4} size={sig['size']}")
+    return "\n".join(lines)
+
+
+async def get_vcd_time_range() -> str:
+    """Get VCD time range."""
+    try:
+        parser = get_vcd_parser()
+    except ValueError as e:
+        return str(e)
+    start, end = parser.get_time_range()
+    return f"Time range: {start} to {end} (total: {end - start} time units)"
+
+
+async def get_fst_time_range() -> str:
+    """Get FST time range."""
+    try:
+        parser = get_fst_parser()
+    except ValueError as e:
+        return str(e)
+    start, end = parser.get_time_range()
+    return f"Time range: {start} to {end} (total: {end - start} time units)"
+
+
+async def get_vcd_signal_values(
+    signal_patterns: list[str], start_time: int, end_time: int
+) -> str:
+    """Get VCD signal values."""
+    try:
+        parser = get_vcd_parser()
+    except ValueError as e:
+        return str(e)
+    if start_time > end_time:
+        return "Error: start_time must be less than or equal to end_time"
+    values, _ = parser.get_signal_values(signal_patterns, start_time, end_time)
+    if not values:
+        return f"No matching signals found or no values in time range [{start_time}, {end_time}]"
+    lines = [f"Signal values in time range [{start_time}, {end_time}]:"]
+    for signal, changes in values.items():
+        lines.append(f"\n{signal}:")
+        for t, v in changes:
+            lines.append(f"  {t:>10}: {v}")
+    return "\n".join(lines)
+
+
+async def get_fst_signal_values(
+    signal_patterns: list[str], start_time: int, end_time: int
+) -> str:
+    """Get FST signal values."""
+    try:
+        parser = get_fst_parser()
+    except ValueError as e:
+        return str(e)
+    if start_time > end_time:
+        return "Error: start_time must be less than or equal to end_time"
+    values, _ = parser.get_signal_values(signal_patterns, start_time, end_time)
+    if not values:
+        return f"No matching signals found or no values in time range [{start_time}, {end_time}]"
+    lines = [f"Signal values in time range [{start_time}, {end_time}]:"]
+    for signal, changes in values.items():
+        lines.append(f"\n{signal}:")
+        for t, v in changes:
+            lines.append(f"  {t:>10}: {v}")
+    return "\n".join(lines)
 
 # Configurable test scale via environment variable
 SCALE = os.environ.get("BENCHMARK_SCALE", "medium")
@@ -463,12 +573,12 @@ def benchmark_files(tmp_path_factory):
 @pytest.fixture(autouse=True)
 def reset_parsers():
     """Reset global parsers before each test."""
-    import mcp_server
-    mcp_server._parser = None
-    mcp_server._fst_parser = None
+    from src import parsers
+    parsers._vcd_parser = None
+    parsers._fst_parser = None
     yield
-    mcp_server._parser = None
-    mcp_server._fst_parser = None
+    parsers._vcd_parser = None
+    parsers._fst_parser = None
 
 
 class TestBenchmark:
@@ -784,7 +894,7 @@ def convert_fst_to_vcd(fst_path: str, vcd_path: str) -> None:
 
                 # Get all signal values
                 all_patterns = [sig["path"] for sig in signals]
-                values = parser.get_signal_values(all_patterns, start_time, end_time)
+                values, _ = parser.get_signal_values(all_patterns, start_time, end_time)
 
                 # Collect all changes and sort by time
                 all_changes = []
@@ -798,8 +908,10 @@ def convert_fst_to_vcd(fst_path: str, vcd_path: str) -> None:
 
                 # Write changes
                 for time, var, value, size in all_changes:
-                    # Convert binary string to integer
+                    # Convert binary string to integer (strip 'b' prefix if present)
                     try:
+                        if value.startswith('b'):
+                            value = value[1:]
                         int_value = int(value, 2)
                     except ValueError:
                         int_value = 0

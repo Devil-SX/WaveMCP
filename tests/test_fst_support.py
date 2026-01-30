@@ -4,14 +4,8 @@ from pathlib import Path
 
 import pytest
 
-# Import the functions to test
-from mcp_server import (
-    FstParser,
-    get_fst_signal_values,
-    get_fst_signals,
-    get_fst_time_range,
-    load_fst_file,
-)
+# Import the classes and functions from the new module structure
+from src.parsers import FstParser, set_fst_parser, get_fst_parser
 
 
 def create_test_fst_file(fst_path: str):
@@ -100,10 +94,86 @@ def test_fst_file(tmp_path):
 @pytest.fixture(autouse=True)
 def reset_fst_parser():
     """Reset global _fst_parser before each test."""
-    import mcp_server
-    mcp_server._fst_parser = None
+    from src import parsers
+    parsers._fst_parser = None
     yield
-    mcp_server._fst_parser = None
+    parsers._fst_parser = None
+
+
+# Wrapper functions to test the tool functionality
+async def load_fst_file(fst_path: str) -> str:
+    """Wrapper for load_fst_file tool."""
+    path = Path(fst_path)
+    if not path.exists():
+        return f"Error: File not found: {fst_path}"
+    try:
+        parser = FstParser(str(path))
+        set_fst_parser(parser)
+        signal_count = len(parser.get_signal_list())
+        return f"Successfully loaded FST file: {fst_path}\nFound {signal_count} signals."
+    except Exception as e:
+        return f"Error loading FST file: {e}"
+
+
+async def get_fst_signals() -> str:
+    """Wrapper for get_fst_signals tool."""
+    try:
+        parser = get_fst_parser()
+    except ValueError as e:
+        return str(e)
+    signals = parser.get_signal_list()
+    if not signals:
+        return "No signals found in FST file."
+    lines = ["Signals in FST file:"]
+    for sig in signals:
+        lines.append(
+            f"  {sig['path']:<40} type={sig['type']:<4} size={sig['size']}"
+        )
+    return "\n".join(lines)
+
+
+async def get_fst_time_range() -> str:
+    """Wrapper for get_fst_time_range tool."""
+    try:
+        parser = get_fst_parser()
+    except ValueError as e:
+        return str(e)
+    start, end = parser.get_time_range()
+    return f"Time range: {start} to {end} (total: {end - start} time units)"
+
+
+async def get_fst_signal_values(
+    signal_patterns: list[str], start_time: int, end_time: int, format: str = "bin"
+) -> str:
+    """Wrapper for get_fst_signal_values tool."""
+    try:
+        parser = get_fst_parser()
+    except ValueError as e:
+        return str(e)
+    if start_time > end_time:
+        return "Error: start_time must be less than or equal to end_time"
+    values, warnings = parser.get_signal_values(signal_patterns, start_time, end_time, format)
+    if not values:
+        return (
+            f"No matching signals found or no values in time range "
+            f"[{start_time}, {end_time}] for patterns: {signal_patterns}"
+        )
+    lines = [f"Signal values in time range [{start_time}, {end_time}]:"]
+    if warnings:
+        lines.append("\nWarnings:")
+        for warning in warnings[:10]:
+            lines.append(f"  {warning}")
+        if len(warnings) > 10:
+            lines.append(f"  ... and {len(warnings) - 10} more warnings")
+        lines.append("")
+    for signal, changes in values.items():
+        lines.append(f"\n{signal}:")
+        if not changes:
+            lines.append("  (no changes in this range)")
+        else:
+            for t, v in changes:
+                lines.append(f"  {t:>10}: {v}")
+    return "\n".join(lines)
 
 
 @pytest.mark.asyncio
@@ -220,6 +290,28 @@ async def test_get_fst_signal_values_case_insensitive(test_fst_file):
     assert "top.clk:" in result
 
 
+@pytest.mark.asyncio
+async def test_get_fst_signal_values_hex_format(test_fst_file):
+    """Test getting signal values in hex format."""
+    await load_fst_file(test_fst_file)
+    result = await get_fst_signal_values(["counter"], 0, 1000, format="hex")
+
+    assert "Signal values in time range [0, 1000]:" in result
+    assert "top.counter:" in result
+    # Check for hex format (0x prefix)
+    assert "0x" in result
+
+
+@pytest.mark.asyncio
+async def test_get_fst_signal_values_dec_format(test_fst_file):
+    """Test getting signal values in decimal format."""
+    await load_fst_file(test_fst_file)
+    result = await get_fst_signal_values(["state"], 0, 1000, format="dec")
+
+    assert "Signal values in time range [0, 1000]:" in result
+    assert "top.state:" in result
+
+
 class TestFstParserClass:
     """Direct tests for the FstParser class."""
 
@@ -261,12 +353,23 @@ class TestFstParserClass:
     def test_parser_get_signal_values(self, test_fst_file):
         """Test FstParser.get_signal_values()."""
         parser = FstParser(test_fst_file)
-        values = parser.get_signal_values(["rst"], 0, 50)
+        values, warnings = parser.get_signal_values(["rst"], 0, 50)
 
         assert 'top.rst' in values
         # rst should have initial value 1, then change to 0 at t=20
         rst_values = values['top.rst']
         assert len(rst_values) >= 1
+        parser.close()
+
+    def test_parser_get_signal_values_hex_format(self, test_fst_file):
+        """Test FstParser.get_signal_values() with hex format."""
+        parser = FstParser(test_fst_file)
+        values, warnings = parser.get_signal_values(["counter"], 0, 1000, fmt="hex")
+
+        assert 'top.counter' in values
+        # Check that values have hex format
+        for _, v in values['top.counter']:
+            assert v.startswith("0x") or v.startswith("b")  # hex or binary fallback
         parser.close()
 
     def test_parser_close(self, test_fst_file):

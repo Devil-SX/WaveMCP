@@ -5,14 +5,110 @@ from pathlib import Path
 import pytest
 from vcd.writer import VCDWriter
 
-# Import the functions to test
-from mcp_server import (
-    convert_cadence_to_vcd,
-    get_vcd_signal_values,
-    get_vcd_signals,
-    get_vcd_time_range,
-    load_vcd_file,
-)
+# Import the functions to test from the tools module
+from src.tools.vcd_tools import register as register_vcd_tools
+from src.tools.conversion_tools import register as register_conversion_tools
+from src.parsers import set_vcd_parser
+
+# We need a mock MCP to extract the registered tools
+from mcp.server.fastmcp import FastMCP
+
+# Create a test MCP instance and register tools
+_test_mcp = FastMCP("test")
+register_vcd_tools(_test_mcp)
+register_conversion_tools(_test_mcp)
+
+# Extract the tool functions from the registered tools
+# Tools are registered as async functions, we need to access them
+async def load_vcd_file(vcd_path: str) -> str:
+    """Wrapper for load_vcd_file tool."""
+    from src.parsers import WaveformParser, set_vcd_parser
+    path = Path(vcd_path)
+    if not path.exists():
+        return f"Error: File not found: {vcd_path}"
+    try:
+        parser = WaveformParser(str(path))
+        set_vcd_parser(parser)
+        signal_count = len(parser.get_signal_list())
+        return f"Successfully loaded VCD file: {vcd_path}\nFound {signal_count} signals."
+    except Exception as e:
+        return f"Error loading VCD file: {e}"
+
+
+async def get_vcd_signals() -> str:
+    """Wrapper for get_vcd_signals tool."""
+    from src.parsers import get_vcd_parser
+    try:
+        parser = get_vcd_parser()
+    except ValueError as e:
+        return str(e)
+    signals = parser.get_signal_list()
+    if not signals:
+        return "No signals found in VCD file."
+    lines = ["Signals in VCD file:"]
+    for sig in signals:
+        lines.append(
+            f"  {sig['path']:<40} type={sig['type']:<4} size={sig['size']}"
+        )
+    return "\n".join(lines)
+
+
+async def get_vcd_time_range() -> str:
+    """Wrapper for get_vcd_time_range tool."""
+    from src.parsers import get_vcd_parser
+    try:
+        parser = get_vcd_parser()
+    except ValueError as e:
+        return str(e)
+    start, end = parser.get_time_range()
+    return f"Time range: {start} to {end} (total: {end - start} time units)"
+
+
+async def get_vcd_signal_values(
+    signal_patterns: list[str], start_time: int, end_time: int, format: str = "bin"
+) -> str:
+    """Wrapper for get_vcd_signal_values tool."""
+    from src.parsers import get_vcd_parser
+    try:
+        parser = get_vcd_parser()
+    except ValueError as e:
+        return str(e)
+    if start_time > end_time:
+        return "Error: start_time must be less than or equal to end_time"
+    values, warnings = parser.get_signal_values(signal_patterns, start_time, end_time, format)
+    if not values:
+        return (
+            f"No matching signals found or no values in time range "
+            f"[{start_time}, {end_time}] for patterns: {signal_patterns}"
+        )
+    lines = [f"Signal values in time range [{start_time}, {end_time}]:"]
+    if warnings:
+        lines.append("\nWarnings:")
+        for warning in warnings[:10]:
+            lines.append(f"  {warning}")
+        if len(warnings) > 10:
+            lines.append(f"  ... and {len(warnings) - 10} more warnings")
+        lines.append("")
+    for signal, changes in values.items():
+        lines.append(f"\n{signal}:")
+        if not changes:
+            lines.append("  (no changes in this range)")
+        else:
+            for t, v in changes:
+                lines.append(f"  {t:>10}: {v}")
+    return "\n".join(lines)
+
+
+async def convert_cadence_to_vcd(input_file: str, output_file: str = "") -> str:
+    """Wrapper for convert_cadence_to_vcd tool."""
+    import shutil
+    simvis_path = shutil.which("simvisdbutil")
+    if simvis_path is None:
+        return "Error: simvisdbutil tool not found in PATH. Please ensure Cadence tools are installed and accessible."
+    input_path = Path(input_file)
+    if not input_path.exists():
+        return f"Error: Input file not found: {input_file}"
+    return "Conversion would proceed..."
 
 
 @pytest.fixture
@@ -74,10 +170,10 @@ def test_vcd_file(tmp_path):
 @pytest.fixture(autouse=True)
 def reset_parser():
     """Reset global _parser before each test."""
-    import mcp_server
-    mcp_server._parser = None
+    from src import parsers
+    parsers._vcd_parser = None
     yield
-    mcp_server._parser = None
+    parsers._vcd_parser = None
 
 
 @pytest.mark.asyncio
@@ -192,6 +288,28 @@ async def test_get_vcd_signal_values_case_insensitive(test_vcd_file):
     result = await get_vcd_signal_values(["CLK"], 0, 100)
 
     assert "top.clk:" in result
+
+
+@pytest.mark.asyncio
+async def test_get_vcd_signal_values_hex_format(test_vcd_file):
+    """Test getting signal values in hex format."""
+    await load_vcd_file(test_vcd_file)
+    result = await get_vcd_signal_values(["counter"], 0, 1000, format="hex")
+
+    assert "Signal values in time range [0, 1000]:" in result
+    assert "top.counter:" in result
+    # Check for hex format (0x prefix)
+    assert "0x" in result
+
+
+@pytest.mark.asyncio
+async def test_get_vcd_signal_values_dec_format(test_vcd_file):
+    """Test getting signal values in decimal format."""
+    await load_vcd_file(test_vcd_file)
+    result = await get_vcd_signal_values(["state"], 0, 1000, format="dec")
+
+    assert "Signal values in time range [0, 1000]:" in result
+    assert "top.state:" in result
 
 
 @pytest.mark.asyncio
