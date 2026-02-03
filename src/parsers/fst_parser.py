@@ -51,6 +51,8 @@ class FstParser:
         module_path: str = "",
         max_depth: int = -1,
         limit: int = 100,
+        pattern: str = "",
+        use_regex: bool = False,
     ) -> tuple[list[dict], int]:
         """Get list of signals with hierarchical filtering.
 
@@ -60,12 +62,21 @@ class FstParser:
             max_depth: Maximum depth relative to module_path (-1 for unlimited).
                        For example, max_depth=1 returns only direct children.
             limit: Maximum number of signals to return (default: 100, 0 for unlimited).
+            pattern: Filter pattern for signal names (empty string for no filter).
+            use_regex: If True, treat pattern as regex; if False, use substring match.
 
         Returns:
             Tuple of (signals_list, total_count)
             - signals_list: List of signal dicts (limited by 'limit')
             - total_count: Total number of matching signals before limit
         """
+        import re
+
+        # Compile regex pattern if needed
+        regex = None
+        if pattern and use_regex:
+            regex = re.compile(pattern)
+
         signals = []
         module_prefix = module_path + "." if module_path else ""
         module_depth = module_path.count(".") + 1 if module_path else 0
@@ -84,6 +95,15 @@ class FstParser:
                 if relative_depth > max_depth:
                     continue
 
+            # Filter by pattern
+            if pattern:
+                if use_regex:
+                    if not regex.search(sig_path):
+                        continue
+                else:
+                    if pattern not in sig_path:
+                        continue
+
             # Return signal without internal handle
             signals.append({k: v for k, v in sig.items() if k != 'handle'})
 
@@ -98,7 +118,7 @@ class FstParser:
 
     def get_signal_values(
         self,
-        signal_patterns: list[str],
+        signal_names: list[str],
         start_time: int,
         end_time: int,
         fmt: str = "bin",
@@ -106,7 +126,7 @@ class FstParser:
         """Get signal values within specified time range.
 
         Args:
-            signal_patterns: List of signal name patterns to match
+            signal_names: List of signal names for case-insensitive substring matching
             start_time: Start time (in FST time units)
             end_time: End time (in FST time units)
             fmt: Output format - "bin" (default), "hex", or "dec"
@@ -126,8 +146,8 @@ class FstParser:
         for sig in self._signals:
             sig_path = sig['path']
             matches = any(
-                pattern.lower() in sig_path.lower()
-                for pattern in signal_patterns
+                name.lower() in sig_path.lower()
+                for name in signal_names
             )
             if matches:
                 matching_handles.add(sig['handle'])

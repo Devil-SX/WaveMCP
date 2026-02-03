@@ -46,6 +46,8 @@ def register(mcp: FastMCP):
         module_path: str = "",
         max_depth: int = -1,
         limit: int = 100,
+        pattern: str = "",
+        use_regex: bool = False,
     ) -> str:
         """Get list of signals in the loaded FST file with hierarchical filtering (FST format only).
 
@@ -58,13 +60,15 @@ def register(mcp: FastMCP):
             module_path: Filter signals under this module (e.g., "top.cpu"). Empty string for root.
             max_depth: Maximum depth relative to module_path (-1 for unlimited, 1 for direct children only).
             limit: Maximum number of signals to display (default: 100). Use 0 for no limit.
+            pattern: Filter pattern for signal names (empty string for no filter).
+            use_regex: If True, treat pattern as regex; if False, use substring match.
         """
         try:
             parser = get_fst_parser()
         except ValueError as e:
             return str(e)
 
-        signals, total_count = parser.get_signal_list(module_path, max_depth, limit)
+        signals, total_count = parser.get_signal_list(module_path, max_depth, limit, pattern, use_regex)
         if not signals:
             if module_path:
                 return f"No signals found under module: {module_path}"
@@ -75,6 +79,10 @@ def register(mcp: FastMCP):
             filter_info += f", module={module_path}"
         if max_depth >= 0:
             filter_info += f", max_depth={max_depth}"
+        if pattern:
+            filter_info += f", pattern={pattern}"
+            if use_regex:
+                filter_info += " (regex)"
 
         lines = [f"Signals in FST file (showing {len(signals)}/{total_count}{filter_info}):"]
         for sig in signals:
@@ -99,7 +107,7 @@ def register(mcp: FastMCP):
 
     @mcp.tool()
     async def get_fst_signal_values(
-        signal_patterns: list[str],
+        signal_names: list[str],
         start_time: int,
         end_time: int,
         format: str = "bin",
@@ -113,7 +121,7 @@ def register(mcp: FastMCP):
         - Use the 'limit' parameter to control output size
 
         Args:
-            signal_patterns: List of signal name patterns to match (use specific patterns, avoid "*" or empty strings)
+            signal_names: List of signal names for case-insensitive substring matching
             start_time: Start time (in FST time units)
             end_time: End time (in FST time units)
             format: Output format - "bin" (default, prefix b), "hex" (prefix 0x), or "dec" (no prefix).
@@ -128,12 +136,12 @@ def register(mcp: FastMCP):
         if start_time > end_time:
             return "Error: start_time must be less than or equal to end_time"
 
-        values, warnings = parser.get_signal_values(signal_patterns, start_time, end_time, format)
+        values, warnings = parser.get_signal_values(signal_names, start_time, end_time, format)
 
         if not values:
             return (
                 f"No matching signals found or no values in time range "
-                f"[{start_time}, {end_time}] for patterns: {signal_patterns}"
+                f"[{start_time}, {end_time}] for signal names: {signal_names}"
             )
 
         lines = [f"Signal values in time range [{start_time}, {end_time}]:"]

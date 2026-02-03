@@ -19,6 +19,8 @@ class WaveformParser:
         module_path: str = "",
         max_depth: int = -1,
         limit: int = 100,
+        pattern: str = "",
+        use_regex: bool = False,
     ) -> tuple[list[dict], int]:
         """Get list of signals with hierarchical filtering.
 
@@ -28,12 +30,21 @@ class WaveformParser:
             max_depth: Maximum depth relative to module_path (-1 for unlimited).
                        For example, max_depth=1 returns only direct children.
             limit: Maximum number of signals to return (default: 100, 0 for unlimited).
+            pattern: Filter pattern for signal names (empty string for no filter).
+            use_regex: If True, treat pattern as regex; if False, use substring match.
 
         Returns:
             Tuple of (signals_list, total_count)
             - signals_list: List of signal dicts (limited by 'limit')
             - total_count: Total number of matching signals before limit
         """
+        import re
+
+        # Compile regex pattern if needed
+        regex = None
+        if pattern and use_regex:
+            regex = re.compile(pattern)
+
         signals = []
         module_prefix = module_path + "." if module_path else ""
         module_depth = module_path.count(".") + 1 if module_path else 0
@@ -49,6 +60,15 @@ class WaveformParser:
                 relative_depth = sig_depth - module_depth + 1
                 if relative_depth > max_depth:
                     continue
+
+            # Filter by pattern
+            if pattern:
+                if use_regex:
+                    if not regex.search(sig_name):
+                        continue
+                else:
+                    if pattern not in sig_name:
+                        continue
 
             sig_obj = self.vcd[sig_name]
             signals.append({
@@ -69,7 +89,7 @@ class WaveformParser:
 
     def get_signal_values(
         self,
-        signal_patterns: list[str],
+        signal_names: list[str],
         start_time: int,
         end_time: int,
         fmt: str = "bin",
@@ -77,7 +97,7 @@ class WaveformParser:
         """Get signal values within specified time range.
 
         Args:
-            signal_patterns: List of signal name patterns to match
+            signal_names: List of signal names for case-insensitive substring matching
             start_time: Start time (in VCD time units)
             end_time: End time (in VCD time units)
             fmt: Output format - "bin" (default), "hex", or "dec"
@@ -92,10 +112,10 @@ class WaveformParser:
 
         # Find matching signals
         for sig_name in self.vcd.signals:
-            # Check if signal matches any pattern
+            # Check if signal matches any name (case-insensitive substring match)
             matches = any(
-                pattern.lower() in sig_name.lower()
-                for pattern in signal_patterns
+                name.lower() in sig_name.lower()
+                for name in signal_names
             )
             if not matches:
                 continue

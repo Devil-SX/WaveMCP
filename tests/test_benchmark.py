@@ -112,7 +112,7 @@ async def get_fst_time_range() -> str:
 
 
 async def get_vcd_signal_values(
-    signal_patterns: list[str], start_time: int, end_time: int
+    signal_names: list[str], start_time: int, end_time: int
 ) -> str:
     """Get VCD signal values."""
     try:
@@ -121,7 +121,7 @@ async def get_vcd_signal_values(
         return str(e)
     if start_time > end_time:
         return "Error: start_time must be less than or equal to end_time"
-    values, _ = parser.get_signal_values(signal_patterns, start_time, end_time)
+    values, _ = parser.get_signal_values(signal_names, start_time, end_time)
     if not values:
         return f"No matching signals found or no values in time range [{start_time}, {end_time}]"
     lines = [f"Signal values in time range [{start_time}, {end_time}]:"]
@@ -133,7 +133,7 @@ async def get_vcd_signal_values(
 
 
 async def get_fst_signal_values(
-    signal_patterns: list[str], start_time: int, end_time: int
+    signal_names: list[str], start_time: int, end_time: int
 ) -> str:
     """Get FST signal values."""
     try:
@@ -142,7 +142,7 @@ async def get_fst_signal_values(
         return str(e)
     if start_time > end_time:
         return "Error: start_time must be less than or equal to end_time"
-    values, _ = parser.get_signal_values(signal_patterns, start_time, end_time)
+    values, _ = parser.get_signal_values(signal_names, start_time, end_time)
     if not values:
         return f"No matching signals found or no values in time range [{start_time}, {end_time}]"
     lines = [f"Signal values in time range [{start_time}, {end_time}]:"]
