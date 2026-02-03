@@ -29,7 +29,7 @@ async def load_vcd_file(vcd_path: str) -> str:
     try:
         parser = WaveformParser(str(path))
         set_vcd_parser(parser)
-        signal_count = len(parser.get_signal_list())
+        _, signal_count = parser.get_signal_list(limit=0)
         return f"Successfully loaded VCD file: {vcd_path}\nFound {signal_count} signals."
     except Exception as e:
         return f"Error loading VCD file: {e}"
@@ -42,10 +42,10 @@ async def get_vcd_signals() -> str:
         parser = get_vcd_parser()
     except ValueError as e:
         return str(e)
-    signals = parser.get_signal_list()
+    signals, total_count = parser.get_signal_list(limit=0)
     if not signals:
         return "No signals found in VCD file."
-    lines = ["Signals in VCD file:"]
+    lines = [f"Signals in VCD file (showing {len(signals)}/{total_count}):"]
     for sig in signals:
         lines.append(
             f"  {sig['path']:<40} type={sig['type']:<4} size={sig['size']}"
@@ -197,7 +197,7 @@ async def test_get_vcd_signals_success(test_vcd_file):
     await load_vcd_file(test_vcd_file)
     result = await get_vcd_signals()
 
-    assert "Signals in VCD file:" in result
+    assert "Signals in VCD file" in result
     assert "top.clk" in result
     assert "top.rst" in result
     assert "top.counter" in result

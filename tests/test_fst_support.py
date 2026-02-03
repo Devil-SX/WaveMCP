@@ -109,7 +109,7 @@ async def load_fst_file(fst_path: str) -> str:
     try:
         parser = FstParser(str(path))
         set_fst_parser(parser)
-        signal_count = len(parser.get_signal_list())
+        _, signal_count = parser.get_signal_list(limit=0)
         return f"Successfully loaded FST file: {fst_path}\nFound {signal_count} signals."
     except Exception as e:
         return f"Error loading FST file: {e}"
@@ -121,10 +121,10 @@ async def get_fst_signals() -> str:
         parser = get_fst_parser()
     except ValueError as e:
         return str(e)
-    signals = parser.get_signal_list()
+    signals, total_count = parser.get_signal_list(limit=0)
     if not signals:
         return "No signals found in FST file."
-    lines = ["Signals in FST file:"]
+    lines = [f"Signals in FST file (showing {len(signals)}/{total_count}):"]
     for sig in signals:
         lines.append(
             f"  {sig['path']:<40} type={sig['type']:<4} size={sig['size']}"
@@ -197,7 +197,7 @@ async def test_get_fst_signals_success(test_fst_file):
     await load_fst_file(test_fst_file)
     result = await get_fst_signals()
 
-    assert "Signals in FST file:" in result
+    assert "Signals in FST file" in result
     assert "top.clk" in result
     assert "top.rst" in result
     assert "top.counter" in result
@@ -325,8 +325,9 @@ class TestFstParserClass:
     def test_parser_get_signal_list(self, test_fst_file):
         """Test FstParser.get_signal_list()."""
         parser = FstParser(test_fst_file)
-        signals = parser.get_signal_list()
+        signals, total_count = parser.get_signal_list(limit=0)
 
+        assert total_count == 5
         assert len(signals) == 5
         paths = [s['path'] for s in signals]
         assert 'top.clk' in paths

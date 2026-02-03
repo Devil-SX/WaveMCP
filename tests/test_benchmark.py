@@ -41,7 +41,7 @@ async def load_vcd_file(vcd_path: str) -> str:
     try:
         parser = WaveformParser(str(path))
         set_vcd_parser(parser)
-        signal_count = len(parser.get_signal_list())
+        _, signal_count = parser.get_signal_list(limit=0)
         return f"Successfully loaded VCD file: {vcd_path}\nFound {signal_count} signals."
     except Exception as e:
         return f"Error loading VCD file: {e}"
@@ -55,7 +55,7 @@ async def load_fst_file(fst_path: str) -> str:
     try:
         parser = FstParser(str(path))
         set_fst_parser(parser)
-        signal_count = len(parser.get_signal_list())
+        _, signal_count = parser.get_signal_list(limit=0)
         return f"Successfully loaded FST file: {fst_path}\nFound {signal_count} signals."
     except Exception as e:
         return f"Error loading FST file: {e}"
@@ -67,10 +67,10 @@ async def get_vcd_signals() -> str:
         parser = get_vcd_parser()
     except ValueError as e:
         return str(e)
-    signals = parser.get_signal_list()
+    signals, total_count = parser.get_signal_list(limit=0)
     if not signals:
         return "No signals found in VCD file."
-    lines = ["Signals in VCD file:"]
+    lines = [f"Signals in VCD file (showing {len(signals)}/{total_count}):"]
     for sig in signals:
         lines.append(f"  {sig['path']:<40} type={sig['type']:<4} size={sig['size']}")
     return "\n".join(lines)
@@ -82,10 +82,10 @@ async def get_fst_signals() -> str:
         parser = get_fst_parser()
     except ValueError as e:
         return str(e)
-    signals = parser.get_signal_list()
+    signals, total_count = parser.get_signal_list(limit=0)
     if not signals:
         return "No signals found in FST file."
-    lines = ["Signals in FST file:"]
+    lines = [f"Signals in FST file (showing {len(signals)}/{total_count}):"]
     for sig in signals:
         lines.append(f"  {sig['path']:<40} type={sig['type']:<4} size={sig['size']}")
     return "\n".join(lines)
@@ -876,7 +876,7 @@ def convert_fst_to_vcd(fst_path: str, vcd_path: str) -> None:
     parser = FstParser(fst_path)
 
     try:
-        signals = parser.get_signal_list()
+        signals, _ = parser.get_signal_list(limit=0)
         start_time, end_time = parser.get_time_range()
 
         with open(vcd_path, "w") as f:

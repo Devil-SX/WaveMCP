@@ -46,13 +46,51 @@ class FstParser:
             self._signals.append(sig_info)
             self._signals_by_handle[sig.handle] = sig_path
 
-    def get_signal_list(self) -> list[dict]:
-        """Get list of all signals."""
-        # Return signals without the internal handle
-        return [
-            {k: v for k, v in sig.items() if k != 'handle'}
-            for sig in self._signals
-        ]
+    def get_signal_list(
+        self,
+        module_path: str = "",
+        max_depth: int = -1,
+        limit: int = 100,
+    ) -> tuple[list[dict], int]:
+        """Get list of signals with hierarchical filtering.
+
+        Args:
+            module_path: Filter signals under this module path (e.g., "top.cpu").
+                         Empty string means root (all modules).
+            max_depth: Maximum depth relative to module_path (-1 for unlimited).
+                       For example, max_depth=1 returns only direct children.
+            limit: Maximum number of signals to return (default: 100, 0 for unlimited).
+
+        Returns:
+            Tuple of (signals_list, total_count)
+            - signals_list: List of signal dicts (limited by 'limit')
+            - total_count: Total number of matching signals before limit
+        """
+        signals = []
+        module_prefix = module_path + "." if module_path else ""
+        module_depth = module_path.count(".") + 1 if module_path else 0
+
+        for sig in self._signals:
+            sig_path = sig['path']
+
+            # Filter by module_path
+            if module_path and not sig_path.startswith(module_prefix):
+                continue
+
+            # Filter by max_depth
+            if max_depth >= 0:
+                sig_depth = sig_path.count(".")
+                relative_depth = sig_depth - module_depth + 1
+                if relative_depth > max_depth:
+                    continue
+
+            # Return signal without internal handle
+            signals.append({k: v for k, v in sig.items() if k != 'handle'})
+
+        total_count = len(signals)
+        if limit > 0:
+            signals = signals[:limit]
+        return signals, total_count
 
     def get_time_range(self) -> tuple[int, int]:
         """Get the total time range of the waveform."""
