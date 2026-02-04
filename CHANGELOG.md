@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Removed
+- Cadence waveform conversion support (`convert_cadence_to_vcd` tool)
+  - Removed `src/tools/conversion_tools.py`
+  - Removed dependency on `simvisdbutil` external tool
+
 ### Added
 - Signal filtering with `pattern` and `use_regex` parameters for `get_vcd_signals` and `get_fst_signals`
   - Substring matching (default) when `use_regex=False`
@@ -15,7 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Value format options (bin, hex, dec) for signal value queries
 - New `src/` modular package structure:
   - `src/parsers/` - VCD and FST parser classes
-  - `src/tools/` - MCP tool implementations (vcd_tools, fst_tools, conversion_tools, float_tools)
+  - `src/tools/` - MCP tool implementations (vcd_tools, fst_tools, float_tools)
   - `src/utils/` - Utility functions (float_convert, format)
 - Tests for float conversion utilities (`tests/test_float_convert.py`)
 - Tests for value formatting utilities (`tests/test_format.py`)

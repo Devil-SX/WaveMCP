@@ -7,7 +7,6 @@ from vcd.writer import VCDWriter
 
 # Import the functions to test from the tools module
 from src.tools.vcd_tools import register as register_vcd_tools
-from src.tools.conversion_tools import register as register_conversion_tools
 from src.parsers import set_vcd_parser
 
 # We need a mock MCP to extract the registered tools
@@ -16,7 +15,6 @@ from mcp.server.fastmcp import FastMCP
 # Create a test MCP instance and register tools
 _test_mcp = FastMCP("test")
 register_vcd_tools(_test_mcp)
-register_conversion_tools(_test_mcp)
 
 # Extract the tool functions from the registered tools
 # Tools are registered as async functions, we need to access them
@@ -97,18 +95,6 @@ async def get_vcd_signal_values(
             for t, v in changes:
                 lines.append(f"  {t:>10}: {v}")
     return "\n".join(lines)
-
-
-async def convert_cadence_to_vcd(input_file: str, output_file: str = "") -> str:
-    """Wrapper for convert_cadence_to_vcd tool."""
-    import shutil
-    simvis_path = shutil.which("simvisdbutil")
-    if simvis_path is None:
-        return "Error: simvisdbutil tool not found in PATH. Please ensure Cadence tools are installed and accessible."
-    input_path = Path(input_file)
-    if not input_path.exists():
-        return f"Error: Input file not found: {input_file}"
-    return "Conversion would proceed..."
 
 
 @pytest.fixture
@@ -310,27 +296,3 @@ async def test_get_vcd_signal_values_dec_format(test_vcd_file):
 
     assert "Signal values in time range [0, 1000]:" in result
     assert "top.state:" in result
-
-
-@pytest.mark.asyncio
-async def test_convert_cadence_to_vcd_no_tool():
-    """Test conversion when simvisdbutil is not available."""
-    result = await convert_cadence_to_vcd("input.db", "output.vcd")
-    assert "simvisdbutil tool not found" in result
-
-
-@pytest.mark.asyncio
-async def test_convert_cadence_to_vcd_file_not_found():
-    """Test conversion with non-existent input file."""
-    # This test will fail if simvisdbutil is actually installed
-    result = await convert_cadence_to_vcd("/nonexistent/file.db")
-    # Either tool not found or file not found
-    assert "simvisdbutil tool not found" in result or "Input file not found" in result
-
-
-@pytest.mark.asyncio
-async def test_convert_cadence_to_vcd_default_output_name():
-    """Test that default output filename is generated correctly."""
-    result = await convert_cadence_to_vcd("/nonexistent/file.db")
-    # Should fail, but we're testing the parameter handling
-    assert "simvisdbutil tool not found" in result or "Input file not found" in result

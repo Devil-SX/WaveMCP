@@ -10,7 +10,6 @@ MCP server for viewing and parsing VCD (Value Change Dump) and FST (Fast Signal 
 - Get signal values within time ranges
 - Pattern-based signal matching (case-insensitive)
 - **FST format support** - Native parsing of GTKWave's compressed binary format
-- **Convert Cadence waveform files (SST2/PWLF) to VCD format**
 
 ## Installation
 
@@ -18,7 +17,6 @@ MCP server for viewing and parsing VCD (Value Change Dump) and FST (Fast Signal 
 
 - Python 3.12+
 - [uv](https://github.com/astral-sh/uv) (recommended package manager)
-- Cadence `simvisdbutil` tool (for Cadence file conversion, optional)
 
 ### Setup
 
@@ -72,7 +70,6 @@ The Inspector will:
   - `get_fst_signals` - List all signals (FST)
   - `get_fst_time_range` - Get time range (FST)
   - `get_fst_signal_values` - Get signal values in time range (FST)
-  - `convert_cadence_to_vcd` - Convert Cadence waveform to VCD format
 
 ## Testing
 
@@ -100,33 +97,6 @@ wave_mcp/
 
 - **VCD** (Value Change Dump) - Native format, full support
 - **FST** (Fast Signal Trace) - Native format, full support via `pylibfst`
-- **Cadence SST2/PWLF** - Can be converted to VCD using `convert_cadence_to_vcd` tool (requires `simvisdbutil`)
-
-### Cadence to VCD Conversion
-
-The `convert_cadence_to_vcd` tool converts Cadence waveform files to VCD format:
-
-```python
-# Convert with default output path (same directory, .vcd extension)
-convert_cadence_to_vcd(input_file="/path/to/wave.db")
-
-# Convert with custom output path
-convert_cadence_to_vcd(
-    input_file="/path/to/wave.db",
-    output_file="/path/to/output.vcd"
-)
-```
-
-**Requirements:**
-- `simvisdbutil` must be installed and in PATH
-- The tool checks for availability before attempting conversion
-
-**Example:**
-```
-Successfully converted Cadence waveform to VCD format.
-Input file:  /absolute/path/to/wave.db
-Output file: /absolute/path/to/wave.vcd
-```
 
 ### FST Format
 

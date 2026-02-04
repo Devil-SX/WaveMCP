@@ -2,7 +2,7 @@
 
 from mcp.server.fastmcp import FastMCP
 
-from src.tools import vcd_tools, fst_tools, conversion_tools, float_tools
+from src.tools import vcd_tools, fst_tools, float_tools
 
 # Initialize FastMCP server
 mcp = FastMCP(
@@ -20,7 +20,6 @@ mcp = FastMCP(
 # Register all tools
 vcd_tools.register(mcp)
 fst_tools.register(mcp)
-conversion_tools.register(mcp)
 float_tools.register(mcp)
 
 
