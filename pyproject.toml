@@ -1,16 +1,19 @@
 [project]
 name = "wave-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "MCP server for viewing and parsing VCD waveform files"
 requires-python = ">=3.12"
 dependencies = [
     "mcp>=1.0.0",
-    "vcdvcd>=2.1",
-    "pylibfst>=0.2.1",
+    "pywellen>=0.20.0",
 ]
+
+[project.optional-dependencies]
+legacy = ["vcdvcd>=2.1", "pylibfst>=0.2.1"]
 
 [dependency-groups]
 dev = [
+    "wave-mcp[legacy]",
     "pyvcd>=0.4.0",
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
