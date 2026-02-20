@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-02-20
+
+### Added
+- Deprecation notice in README: repository archived, recommending Programmatic Tools
+- cloc language badge (Python 829 lines) in README
+
 ## [0.2.0]
 
 ### Added

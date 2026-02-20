@@ -1,5 +1,9 @@
 # Wave MCP Server
 
+> **This repository is no longer maintained.** Waveform databases are not well suited for MCP Tools — Programmatic Tools are a better fit. See [Advanced Tool Use](https://www.anthropic.com/engineering/advanced-tool-use) for details.
+
+![Python](https://img.shields.io/badge/Python-829_lines-blue)
+
 MCP server for viewing and parsing VCD (Value Change Dump) and FST (Fast Signal Trace) waveform files.
 
 ## Features
